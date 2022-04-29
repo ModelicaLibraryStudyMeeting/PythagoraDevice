@@ -22,8 +22,8 @@ package PythagoraDevice
       parameter String shapeType = "sphere";
       parameter Real r_shape[3];
       //  Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape sphere(shapeType = shapeType, color = sphereColor, length = sphereDiameter, width = sphereDiameter, height = sphereDiameter, lengthDirection = {1, 0, 0}, widthDirection = {0, 1, 0}, r_shape = r_shape, r = r_0, R = R);
-//      Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape sphere(shapeType = "file://C:\Work\2020\Pita\DXF_Study\Ball\q78u2sv9fx1c-soccerball (1)\untitled.stl", color = sphereColor, length = sphereDiameter, width = sphereDiameter, height = sphereDiameter, lengthDirection = {1, 0, 0}, widthDirection = {0, 1, 0}, r_shape = {0, 0, 0} * sphereDiameter / 2, r = r_0, R = R);
-            Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape sphere(shapeType = "sphere", color = sphereColor, length = sphereDiameter, width = sphereDiameter, height = sphereDiameter, lengthDirection = {1, 0, 0}, widthDirection = {0, 1, 0}, r_shape = {0, 0, 0} * sphereDiameter / 2, r = r_0, R = R);
+      //      Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape sphere(shapeType = "file://C:\Work\2020\Pita\DXF_Study\Ball\q78u2sv9fx1c-soccerball (1)\untitled.stl", color = sphereColor, length = sphereDiameter, width = sphereDiameter, height = sphereDiameter, lengthDirection = {1, 0, 0}, widthDirection = {0, 1, 0}, r_shape = {0, 0, 0} * sphereDiameter / 2, r = r_0, R = R);
+      Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape sphere(shapeType = "sphere", color = sphereColor, length = sphereDiameter, width = sphereDiameter, height = sphereDiameter, lengthDirection = {1, 0, 0}, widthDirection = {0, 1, 0}, r_shape = {0, 0, 0} * sphereDiameter / 2, r = r_0, R = R);
       //    Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape sphere(shapeType="file://C:\Work\2020\Pita\DXF_Study\Ball\untitled.stl", color = sphereColor, length = sphereDiameter, width = sphereDiameter, height = sphereDiameter, lengthDirection = {1, 0, 0}, widthDirection = {0, 1, 0}, r_shape = -{1, 0, 0} * sphereDiameter / 2, r = r_0, R = R);
       parameter StateSelect stateSelect = StateSelect.avoid;
       SI.Position r_0[3](start = {0, 0, 0}, each stateSelect = stateSelect);
@@ -61,6 +61,80 @@ package PythagoraDevice
         uses(Modelica(version = "3.2.3")),
         Icon(coordinateSystem(initialScale = 0.1), graphics = {Rectangle(fillColor = {255, 85, 127}, fillPattern = FillPattern.HorizontalCylinder, extent = {{-100, 20}, {100, -20}})}));
     end Box;
+
+    model Arrow "Visualizing an arrow with variable size; all data have to be set as modifiers (see info layer)"
+      import Modelica.Mechanics.MultiBody.Types;
+      import Modelica.Mechanics.MultiBody.Frames;
+      import T = Modelica.Mechanics.MultiBody.Frames.TransformationMatrices;
+      import Modelica.SIunits.Conversions.to_unit1;
+      input Frames.Orientation R = Frames.nullRotation() "Orientation object to rotate the world frame into the arrow frame" annotation(
+        Dialog);
+      input SI.Position r[3] = {0, 0, 0} "Position vector from origin of world frame to origin of arrow frame, resolved in world frame" annotation(
+        Dialog);
+      input SI.Position r_tail[3] = {0, 0, 0} "Position vector from origin of arrow frame to arrow tail, resolved in arrow frame" annotation(
+        Dialog);
+      input SI.Position r_head[3] = {0, 0, 0} "Position vector from arrow tail to the head of the arrow, resolved in arrow frame" annotation(
+        Dialog);
+      //  input SI.Diameter diameter=world.defaultArrowDiameter
+      //    "Diameter of arrow line" annotation(Dialog);
+      input SI.Diameter diameter "Diameter of arrow line" annotation(
+        Dialog);
+      input Modelica.Mechanics.MultiBody.Types.Color color = Modelica.Mechanics.MultiBody.Types.Defaults.ArrowColor "Color of arrow" annotation(
+        Dialog(colorSelector = true));
+      //  input Types.SpecularCoefficient specularCoefficient = world.defaultSpecularCoefficient
+      //    "Material property describing the reflecting of ambient light (= 0 means, that light is completely absorbed)"
+      input Types.SpecularCoefficient specularCoefficient "Material property describing the reflecting of ambient light (= 0 means, that light is completely absorbed)" annotation(
+        Dialog);
+    protected
+      //  outer Modelica.Mechanics.MultiBody.World world;
+      SI.Length length = Modelica.Math.Vectors.length(r_head) "Length of arrow";
+      Real e_x[3](each final unit = "1", start = {1, 0, 0}) = noEvent(if length < 1e-10 then {1, 0, 0} else r_head / length);
+      Real rxvisobj[3](each final unit = "1") = transpose(R.T) * e_x "X-axis unit vector of shape, resolved in world frame" annotation(
+        HideResult = true);
+      SI.Position rvisobj[3] = r + T.resolve1(R.T, r_tail) "Position vector from world frame to shape frame, resolved in world frame" annotation(
+        HideResult = true);
+      SI.Length arrowLength = noEvent(max(0, length - diameter * Types.Defaults.ArrowHeadLengthFraction)) annotation(
+        HideResult = true);
+      import Modelica.Mechanics.MultiBody.*;
+      import Modelica.Mechanics.*;
+      Visualizers.Advanced.Shape arrowLine(length = arrowLength, width = diameter, height = diameter, lengthDirection = to_unit1(r_head), widthDirection = {0, 1, 0}, shapeType = "cylinder", color = color, specularCoefficient = specularCoefficient, r_shape = r_tail, r = r, R = R);
+      Visualizers.Advanced.Shape arrowHead(length = noEvent(max(0, min(length, diameter * Types.Defaults.ArrowHeadLengthFraction))), width = noEvent(max(0, diameter * MultiBody.Types.Defaults.ArrowHeadWidthFraction)), height = noEvent(max(0, diameter * MultiBody.Types.Defaults.ArrowHeadWidthFraction)), lengthDirection = -r_head, widthDirection = {0, 1, 0}, shapeType = "cone", color = color, specularCoefficient = specularCoefficient, r = rvisobj, R = R);
+      //    lengthDirection = to_unit1(r_head),
+      /*+ rxvisobj*arrowLength*/
+      annotation(
+        Documentation(info = "<html>
+    <p>
+    Model <strong>Arrow</strong> defines an arrow that is dynamically
+    visualized at the defined location (see variables below).
+    </p>
+    
+    <p>
+    <img src=\"modelica://Modelica/Resources/Images/Mechanics/MultiBody/Visualizers/Arrow.png\" alt=\"model Visualizers.Advanced.Arrow\">
+    </p>
+    
+    <p>
+    The variables under heading <strong>Parameters</strong> below
+    are declared as (time varying) <strong>input</strong> variables.
+    If the default equation is not appropriate, a corresponding
+    modifier equation has to be provided in the
+    model where an <strong>Arrow</strong> instance is used, e.g., in the form
+    </p>
+    <pre>
+    Visualizers.Advanced.Arrow arrow(diameter = sin(time));
+    </pre>
+    
+    <p>
+    Variable <strong>color</strong> is an Integer vector with 3 elements,
+    {r, g, b}, and specifies the color of the shape.
+    {r,g,b} are the \"red\", \"green\" and \"blue\" color parts.
+    Note, r g, b are given in the range 0 .. 255.
+    The predefined type <strong>MultiBody.Types.Color</strong> contains
+    a menu definition of the colors used in the MultiBody
+    library (will be replaced by a color editor).
+    </p>
+    </html>"),
+        Icon(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}}), graphics = {Rectangle(extent = {{-100, 28}, {20, -28}}, lineColor = {128, 128, 128}, fillColor = {128, 128, 128}, fillPattern = FillPattern.Solid), Polygon(points = {{20, 60}, {100, 0}, {20, -60}, {20, 60}}, lineColor = {128, 128, 128}, fillColor = {128, 128, 128}, fillPattern = FillPattern.Solid), Text(extent = {{-150, 105}, {150, 65}}, textString = "%name", lineColor = {0, 0, 255})}));
+    end Arrow;
   end Visualizers;
 
   package Examples
@@ -100,7 +174,7 @@ package PythagoraDevice
         __OpenModelica_commandLineOptions = "--matchingAlgorithm=PFPlusExt --indexReductionMethod=dynamicStateSelection -d=initialization,NLSanalyticJacobian -d=bltdump -d=bltdump -d=bltdump ",
         __OpenModelica_simulationFlags(lv = "LOG_STATS", outputFormat = "mat", s = "rungekutta"));
     end BallInBox;
-    
+
     model Contact_BallBall
       PythagoraDevice.Components.Ball ball1(g_f = {0, 0, 0}, v_g(fixed = true), v_g_ini = {5e-3, 0, 0}, w_g_ini = {0, 0, 0}) annotation(
         Placement(visible = true, transformation(origin = {-68, 60}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
@@ -148,7 +222,7 @@ package PythagoraDevice
         Diagram(graphics = {Text(origin = {-107, 61}, extent = {{-21, 9}, {21, -9}}, textString = "no notation"), Text(origin = {-115, 22}, extent = {{-27, 12}, {27, -12}}, textString = "rotate the left ball"), Text(origin = {-132, -20}, extent = {{-44, 18}, {44, -18}}, textString = "rotate the both ball in same direction"), Line(origin = {-79.6116, 83.3043}, points = {{-27, 0}, {11, 0}}, arrow = {Arrow.None, Arrow.Filled}, arrowSize = 6), Text(origin = {-131, -58}, extent = {{-47, 16}, {47, -16}}, textString = "rotate the both ball in different direction"), Text(origin = {-85, 91}, extent = {{-45, 13}, {45, -13}}, textString = "velocity direction of all left balls"), Text(origin = {33, 91}, extent = {{-59, 15}, {59, -15}}, textString = "all right balls is stop or rotating without moving")}, coordinateSystem(extent = {{-200, -100}, {100, 100}})),
         Icon(coordinateSystem(extent = {{-200, -100}, {100, 100}})));
     end Contact_BallBall;
-    
+
     model Contact_BallBall_BigAndSmall
       PythagoraDevice.Components.Ball ball1(D = 1, g_f = {0, 0, 0}, v_g(fixed = true), v_g_ini = {1, 0, 0}, w_g_ini = {0, 0, -3}) annotation(
         Placement(visible = true, transformation(origin = {-53, -5}, extent = {{-17, -17}, {17, 17}}, rotation = 0)));
@@ -164,7 +238,7 @@ package PythagoraDevice
       annotation(
         experiment(StartTime = 0, StopTime = 5, Tolerance = 1e-06, Interval = 0.001));
     end Contact_BallBall_BigAndSmall;
-    
+
     model FallingBallOntoBox "Falling the ball onto a plane"
       //  inner Modelica.Mechanics.MultiBody.World world annotation(
       //    Placement(visible = true, transformation(origin = {-80, 78}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
@@ -195,10 +269,31 @@ package PythagoraDevice
         Line(points = {{-44, -24}, {-44, -36}, {24, -36}, {24, -50}}, color = {0, 79, 0}));
     protected
       annotation(
-        experiment(StartTime = 0, StopTime = 3, Tolerance = 1e-06, Interval = 0.0003),
+        experiment(StartTime = 0, StopTime = 5, Tolerance = 1e-06, Interval = 0.0005),
         Diagram(graphics = {Rectangle(extent = {{28, -12}, {28, -12}}), Text(origin = {-44, 49}, extent = {{-44, 5}, {44, -5}}, textString = "With rotation"), Text(origin = {98, 49}, extent = {{-44, 5}, {44, -5}}, textString = "No rotation")}, coordinateSystem(extent = {{-200, -100}, {200, 100}})),
         Icon(coordinateSystem(extent = {{-200, -100}, {200, 100}})));
     end FallingBallOntoBox;
+
+    model BallTest3
+      parameter Real angle_ini_ball1[3] = {0, 0, 0};
+      parameter Real angle_ini_ball2[3] = {32.7716438460142, -16.0819704180493, 13.8593121283851};
+    //  parameter Real w_d_ini[3] = {6.38, -6.81, -25.54};
+      parameter Real w_g_ini[3] = {6.38, -6.81, -25.54};
+    //  parameter Real [3] = {0, 0, -10};
+      PythagoraDevice.Components.BallTest1 ball1(angles_g(displayUnit = "rad"), angles_g_ini = angle_ini_ball1, g_f = {0, 0, 0}, w_g_ini = w_g_ini) annotation(
+        Placement(visible = true, transformation(origin = {-54, 2}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
+      /*start = {32.7716438460142, -16.0819704180493, 13.8593121283851}*/
+      inner Modelica.Mechanics.MultiBody.World world(axisLength = 0.01) annotation(
+        Placement(visible = true, transformation(origin = {68, 42}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
+      PythagoraDevice.Components.BallTest1 ball2(angles_g(displayUnit = "rad"), angles_g_ini = angle_ini_ball2, g_f = {0, 0, 0}, position_ini = {/*15e-3*/30e-3, 0, 0}, w_g_ini = w_g_ini) annotation(
+        Placement(visible = true, transformation(origin = {12, 2}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
+    equation
+    
+      annotation(
+        experiment(StartTime = 0, StopTime = 0.3, Tolerance = 1e-06, Interval = 0.000100033),
+        __OpenModelica_commandLineOptions = "--matchingAlgorithm=PFPlusExt --indexReductionMethod=dynamicStateSelection -d=initialization,NLSanalyticJacobian,nonewInst -d=bltdump -d=nonewInst -d=bltdump -d=nonewInst -d=bltdump -d=nonewInst -d=bltdump -d=nonewInst -d=bltdump ",
+    __OpenModelica_simulationFlags(lv = "LOG_STATS", s = "dassl"));
+    end BallTest3;
   end Examples;
 
   package Components
@@ -206,133 +301,155 @@ package PythagoraDevice
 
     model Ball
       /* ---------------------------------------------
-                  Basic parameters
-      --------------------------------------------- */
-      parameter SI.Mass m(min = 0) = 4/3*pi*(D/2)^3*rho "Mass";                                 
+                              Basic parameters
+                  --------------------------------------------- */
+      parameter SI.Mass m(min = 0) = 4 / 3 * pi * (D / 2) ^ 3 * rho "Mass";
       parameter SI.Diameter D(min = 0) = 11.3e-3 "Diameter";
       parameter StateSelect stateSelect = StateSelect.default "Priority to use s and v as states" annotation(
         Dialog(tab = "Advanced"));
-      parameter SI.Force g_f[3] = {0, -9.8, 0} "Gravity force";
-      
+      parameter SI.Acceleration g_f[3] = {0, -9.8, 0} "Gravitational acceleration";
       /* ---------------------------------------------
-                  Material parameters
-      --------------------------------------------- */
+                              Material parameters
+                  --------------------------------------------- */
       parameter SI.Density rho(min = 0) = 2.5e+3 "density, glass:2.3e+3kg/m^3" annotation(
         Dialog(group = "Material"));
-      parameter Real E(min = 0, unit="Pa") = 7.16e+10 "Young's modulus" annotation(
+      parameter Real E(min = 0, unit = "Pa") = 7.16e+10 "Young's modulus" annotation(
         Dialog(group = "Material"));
       parameter Real nue(min = 0) = 0.23 "Poisson's ratio" annotation(
         Dialog(group = "Material"));
-    
       /* ---------------------------------------------------------------------
-                  Inertia parameters
-      reference https://kikyousan.com/physics/dynamics1/inertia3
-      ------------------------------------------------------------------------ */
-      parameter SI.Inertia I_11(min = 0) = 2 / 5 * m * (D / 2) ^ 2 "(1,1) element of inertia tensor" annotation(
+                              Inertia parameters
+                  reference https://kikyousan.com/physics/dynamics1/inertia3
+                  ------------------------------------------------------------------------ */
+      parameter SI.Inertia I(min = 0) = 2 / 5 * m * (D / 2) ^ 2 "inertia of ball" annotation(
         Dialog(group = "Inertia tensor (resolved in center of mass, parallel to frame_a)"));
-      parameter SI.Inertia I_22(min = 0) = 2 / 5 * m * (D / 2) ^ 2 "(2,2) element of inertia tensor" annotation(
-        Dialog(group = "Inertia tensor (resolved in center of mass, parallel to frame_a)"));
-      parameter SI.Inertia I_33(min = 0) = 2 / 5 * m * (D / 2) ^ 2 "(3,3) element of inertia tensor" annotation(
-        Dialog(group = "Inertia tensor (resolved in center of mass, parallel to frame_a)"));
-      parameter SI.Inertia I_21 = 0 "(2,1) element of inertia tensor" annotation(
-        Dialog(group = "Inertia tensor (resolved in center of mass, parallel to frame_a)"));
-      parameter SI.Inertia I_31 = 0 "(3,1) element of inertia tensor" annotation(
-        Dialog(group = "Inertia tensor (resolved in center of mass, parallel to frame_a)"));
-      parameter SI.Inertia I_32 = 0 "(3,2) element of inertia tensor" annotation(
-        Dialog(group = "Inertia tensor (resolved in center of mass, parallel to frame_a)"));
-      parameter SI.Inertia I[3, 3] = [I_11, I_21, I_31; I_21, I_22, I_32; I_31, I_32, I_33] "inertia tensor" annotation(
-        Dialog(group = "Inertia tensor (resolved in center of mass, parallel to frame_a)"));
-      
       /* ---------------------------------------------
-                  initial condition
-      --------------------------------------------- */
-      parameter SI.Angle angles_g_start[3] = {0, 0, 0} "initial angles of object in world frame" annotation(
-        Dialog(group = "Initialization"));
+                              initial condition
+                  --------------------------------------------- */
       parameter SI.Position position_ini[3] = {0, 0, 0} "initial centor position of object in world frame" annotation(
         Dialog(group = "Initialization"));
       parameter SI.AngularVelocity w_g_ini[3] = {0, 0, 0} annotation(
         Dialog(group = "Initialization"));
       parameter SI.Velocity v_g_ini[3] = {0, 0, 0} annotation(
         Dialog(group = "Initialization"));
-      
+      parameter SI.Angle angles_g_ini[3] = {0, 0, 0} "initial angles in world frame" annotation(
+        Dialog(group = "Initialization"));
       /* ---------------------------------------------
-                  Visialization
-      --------------------------------------------- */
+                              Visialization
+                  --------------------------------------------- */
       parameter Types.Color sphereColor = Modelica.Mechanics.MultiBody.Types.Defaults.BodyColor annotation(
         Dialog(tab = "Visualization"));
       parameter String shapeType = "sphere" annotation(
-          Dialog(tab = "Visualization"));
-      parameter Real e_vis1[3]={D*0.003,0,0} annotation(
-          Dialog(tab = "Visualization"));
-      parameter Real e_vis2[3]={0,D*0.003,0} annotation(
-          Dialog(tab = "Visualization"));
-      parameter Real color1[3]={255, 255, 0} annotation(
-          Dialog(tab = "Visualization"));
-      parameter Real color2[3]={0, 0, 255} annotation(
-          Dialog(tab = "Visualization"));
-      parameter Real color3[3]={255, 0, 0} annotation(
-          Dialog(tab = "Visualization"));
-      
+        Dialog(tab = "Visualization"));
+      parameter Real e_vis1[3] = {D * 0.003, 0, 0} annotation(
+        Dialog(tab = "Visualization"));
+      parameter Real e_vis2[3] = {0, 0, 0} annotation(
+        Dialog(tab = "Visualization"));
+      parameter Real color1[3] = {255, 255, 0} annotation(
+        Dialog(tab = "Visualization"));
+      parameter Real color2[3] = {0, 0, 255} annotation(
+        Dialog(tab = "Visualization"));
+      parameter Real color3[3] = {255, 0, 0} annotation(
+        Dialog(tab = "Visualization"));
       /* ---------------------------------------------
-                  Variables
-      --------------------------------------------- */   
+                              Variables
+                  --------------------------------------------- */
       //Force and moment
       SI.Force F_g[3] "Force applied to an object";
       SI.Torque M_g[3] "moment";
-      
       //translational
       SI.Velocity v_g[3](start = v_g_ini) "Absolute velocity of component　in world fram";
       SI.Acceleration a_g[3](start = {0, 0, 0}) "Absolute acceleration of component　in world fram";
       SI.Position position_g[3](start = position_ini) "Absolute position of center of component　in world fram";
-      
       //rotational
       SI.AngularVelocity w_g[3](start = w_g_ini) "Absolute angular velocity of frame_a resolved in world fram";
       //  SI.AngularAcceleration z_d[3] "Absolute angular acceleration of frame_a resolved in body-fixed fram";
       //  SI.Angle angles_d[3];
-      SI.Angle angles_g[3](start = angles_g_start);
+      SI.Angle angles_g[3](start = angles_g_ini);
       Frames.Orientation R;
-      
       //visualization
-      Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape vis1(shapeType = shapeType, color = color1, length = D, width = D, height = D, lengthDirection = {1, 0, 0}, widthDirection = {0, 1, 0}, r_shape = r_shape+e_vis1, r = position_g, R = R);
-      Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape vis2(shapeType = shapeType, color = color2, length = D, width = D, height = D, lengthDirection = {1, 0, 0}, widthDirection = {0, 1, 0}, r_shape = r_shape+e_vis2, r = position_g, R = R);
-      Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape vis3(shapeType = shapeType, color = color3, length = D, width = D, height = D, lengthDirection = {1, 0, 0}, widthDirection = {0, 1, 0}, r_shape = r_shape, r = position_g, R = R);
-    
+      Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape vis1(shapeType = shapeType, color = color1, length = D, width = D, height = D, lengthDirection = {1, 0, 0}, widthDirection = {0, 1, 0}, r_shape = r_shape + e_vis1, r = position_g, R = R);
+      Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape vis2(shapeType = shapeType, color = color2, length = D, width = D, height = D, lengthDirection = {1, 0, 0}, widthDirection = {0, 1, 0}, r_shape = r_shape + e_vis2, r = position_g, R = R);
       /* ---------------------------------------------
-                  Port
-      --------------------------------------------- */  
+                              Port
+                  --------------------------------------------- */
       PythagoraDevice.Interfaces.Center_a center annotation(
         Placement(visible = true, transformation(origin = {0, 0}, extent = {{-10, -10}, {10, 10}}, rotation = 0), iconTransformation(origin = {0, 0}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
+      /* ---------------------------------------------
+                              Test
+            --------------------------------------------- */
+      Modelica.Mechanics.MultiBody.Frames.Quaternions.Orientation Q;
+      Real angle;
+      Real angle_direction[3];
+      parameter Real eps = 1e-6;
+      //Test
+      parameter Real arrowHeadRatio = 0.1;
+      parameter Real arrowLengthRatio = 0.01 "Force arrow scaling (length = angularVelocity/N_to_m)" annotation(
+        Dialog(group = "if animation = true", enable = animation));
+      Real slipRatio "0%, no slip; 100%, slip; <0, Idling(空回り)";
+      Real w_g_length;
+      Real v_g_length;
+      parameter Integer forceColor[3] = {0, 0, 0};
+      SI.Position w_in_m[3] = w_g * arrowLengthRatio;
+      PythagoraDevice.Visualizers.Arrow angularVelocityArrow(diameter = angularVelocityDiameter, color = forceColor, specularCoefficient = 1, R = R, r = position_g, r_tail = w_in_m, r_head = -w_in_m);
+      Real der_w_g[3];
+    
+      //Test
+      Real Rx[3, 3];
+      Real Ry[3, 3];
+      Real Rz[3, 3];
     
     protected
+      parameter SI.Diameter angularVelocityDiameter = D * arrowHeadRatio;
       parameter Real r_shape[3] = if shapeType == "sphere" then -{1, 0, 0} * D / 2 else {0, 0, 0} "Fix origin and center of gravity of sphere";
+      //  parameter Real r_shape[3] = -{1, 0, 0} * D / 2;
       constant String selectShape = "ball";
       parameter PythagoraDevice.Interfaces.Geometry geometry(shape = selectShape, L = D, W = D, H = D);
       parameter PythagoraDevice.Interfaces.Material material(rho = rho, E = E, nue = nue);
     
     equation
-//Force and moment applied to an object
+    //Force and moment applied to an object
       F_g = center.f + m * g_f;
-  M_g = center.t;
-      
-//equation of equilibrium
+      M_g = center.t;
+    //equation of equilibrium
       F_g = m * der(v_g);
       M_g = I * der(w_g);
-      
-//translational
+    //translational
       a_g = der(v_g);
       v_g = der(position_g);
-      
-//rotational
+    //rotational
       w_g = der(angles_g);
-      
-//Orientation instance R
-      R = Frames.axesRotations(sequence = {1, 2, 3}, angles = angles_g, der_angles = w_g);
-//port
+    //Orientation instance R
+      angle = length(angles_g);
+      angle_direction = normalize(angles_g);
+      Q = Modelica.Mechanics.MultiBody.Frames.Quaternions.planarRotation(angle_direction, angle);
+      R = Frames.from_Q(Q, w_g);
+    
+    //port
       center.position = position_g;
       center.R = R;
       center.m = m;
       center.geometry = geometry;
       center.material = material;
+    //Post
+      w_g_length = length(w_g);
+      v_g_length = length(v_g);
+      der_w_g = der(w_g);
+      slipRatio = if v_g[1] <> 0 and v_g[2] <> 0 and v_g[3] <> 0 then 100 * (v_g_length - w_g_length * D / 2) / v_g_length else 999;
+    //Test
+      Rx = [1, 0, 0;
+            0, Modelica.Math.cos(angles_g[1]), Modelica.Math.sin(angles_g[1]);
+            0, -Modelica.Math.sin(angles_g[1]), Modelica.Math.cos(angles_g[1])];
+    
+      Ry=[Modelica.Math.cos(angles_g[2]), 0, -Modelica.Math.sin(angles_g[2]);
+          0, 1, 0;
+          Modelica.Math.sin(angles_g[2]), 0, Modelica.Math.cos(angles_g[2])];
+        
+      Rz=[Modelica.Math.cos(angles_g[3]), Modelica.Math.sin(angles_g[3]),0;
+          -Modelica.Math.sin(angles_g[3]), Modelica.Math.cos(angles_g[3]), 0;
+          0, 0, 1];
+      R.T=Rx*Ry*Rz;
+      R.w=w_g;
       annotation(
         Icon(graphics = {Ellipse(fillColor = {170, 255, 255}, fillPattern = FillPattern.Sphere, extent = {{-100, 100}, {100, -100}}, endAngle = 360), Line(origin = {179.403, 0.196862}, points = {{-72, 78}, {-72, -82}}, thickness = 1.5, arrow = {Arrow.None, Arrow.Filled}, arrowSize = 18), Text(origin = {98, -86}, extent = {{-16, 8}, {36, -22}}, textString = "g"), Text(origin = {-2, 117}, extent = {{-68, 17}, {68, -17}}, textString = "%name")}, coordinateSystem(initialScale = 0.1)),
         __OpenModelica_simulationFlags(lv = "LOG_STATS", outputFormat = "mat", s = "dassl"),
@@ -342,7 +459,7 @@ package PythagoraDevice
     model FixedBox
       parameter SI.Density rho(min = 0) = 340 "density, glass:2.3e+3kg/m^3" annotation(
         Dialog(group = "Material"));
-      parameter Real E(min = 0, unit="Pa") = 7.85e+9 "Young's modulus" annotation(
+      parameter Real E(min = 0, unit = "Pa") = 7.85e+9 "Young's modulus" annotation(
         Dialog(group = "Material"));
       parameter Real nue(min = 0) = 0.5 "Poisson's ratio" annotation(
         Dialog(group = "Material"));
@@ -350,11 +467,9 @@ package PythagoraDevice
       parameter SI.Length width = 0.01;
       parameter SI.Length height = 1;
       parameter Real m = rho * length * width * height;
-      
       parameter SI.Position position_ini[3] = {0, 0, 0} "centor of box";
       parameter Real lengthDirection[3] = {1, 0, 0};
       parameter Real widthDirection[3] = {0, 1, 0};
-      
       //Animation
       Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape vis(shapeType = selectShape, color = {255, 85, 127}, length = length, width = width, height = height, lengthDirection = {1, 0, 0}, widthDirection = {0, 1, 0}, r_shape = r_shape, r = position_ini, R = R);
       Frames.Orientation R;
@@ -362,14 +477,13 @@ package PythagoraDevice
       PythagoraDevice.Interfaces.Center_a center annotation(
         Placement(visible = true, transformation(origin = {0, 100}, extent = {{-10, -10}, {10, 10}}, rotation = 0), iconTransformation(origin = {0, 0}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
     protected
-      parameter Real dummy=999;
+      parameter Real dummy = 999;
       parameter Real r_shape[3] = {-length / 2, 0, 0} "set the centor to origin";
       constant String selectShape = "box";
-      PythagoraDevice.Interfaces.Geometry geometry(shape = selectShape, L = length, W = width, H = height, m=dummy);
+      PythagoraDevice.Interfaces.Geometry geometry(shape = selectShape, L = length, W = width, H = height, m = dummy);
     equation
       R = Modelica.Mechanics.MultiBody.Frames.nullRotation();
-      
-    //port
+//port
       center.position = position_ini;
       center.geometry = geometry;
       center.R = R;
@@ -382,10 +496,55 @@ package PythagoraDevice
         Icon(coordinateSystem(initialScale = 0.1), graphics = {Rectangle(fillColor = {255, 85, 127}, fillPattern = FillPattern.HorizontalCylinder, extent = {{-100, 20}, {100, -20}})}));
     end FixedBox;
 
+    model OrientedFixedBox
+      parameter SI.Density rho(min = 0) = 340 "density, glass:2.3e+3kg/m^3" annotation(
+        Dialog(group = "Material"));
+      parameter Real E(min = 0, unit = "Pa") = 7.85e+9 "Young's modulus" annotation(
+        Dialog(group = "Material"));
+      parameter Real nue(min = 0) = 0.5 "Poisson's ratio" annotation(
+        Dialog(group = "Material"));
+      parameter SI.Length length = 1;
+      parameter SI.Length width = 0.01;
+      parameter SI.Length height = 1;
+      parameter Real m = rho * length * width * height;
+      parameter SI.Position position_ini[3] = {0, 0, 0} "centor of box";
+      parameter Real lengthDirection[3] = {1, 0, 0};
+      parameter Real widthDirection[3] = {0, 1, 0};
+      parameter Real color[3] = {255, 255, 0} annotation(
+        Dialog(tab = "Visualization"));
+      //initial condition
+      parameter SI.Angle angles_g_ini[3] = {0, 0, 0} "initial angles of object in world frame" annotation(
+        Dialog(group = "Initialization"));
+      //Animation
+      Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape vis(shapeType = selectShape, color = color, length = length, width = width, height = height, lengthDirection = {1, 0, 0}, widthDirection = {0, 1, 0}, r_shape = r_shape, r = position_ini, R = R);
+      Frames.Orientation R;
+      //port
+      PythagoraDevice.Interfaces.Center_a center annotation(
+        Placement(visible = true, transformation(origin = {0, 100}, extent = {{-10, -10}, {10, 10}}, rotation = 0), iconTransformation(origin = {0, 0}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
+    protected
+      parameter Real dummy = 999;
+      parameter Real r_shape[3] = {-length / 2, 0, 0} "set the centor to origin";
+      constant String selectShape = "box";
+      PythagoraDevice.Interfaces.Geometry geometry(shape = selectShape, L = length, W = width, H = height, m = dummy);
+    equation
+      R = Frames.axesRotations(sequence = {1, 2, 3}, angles = angles_g_ini, der_angles = zeros(3));
+//port
+      center.position = position_ini;
+      center.geometry = geometry;
+      center.R = R;
+      center.m = m;
+      center.material.rho = rho;
+      center.material.E = E;
+      center.material.nue = nue;
+      annotation(
+        uses(Modelica(version = "3.2.3")),
+        Icon(coordinateSystem(initialScale = 0.1), graphics = {Rectangle(rotation = 20, fillColor = {255, 85, 127}, fillPattern = FillPattern.HorizontalCylinder, extent = {{-100, 20}, {100, -20}})}));
+    end OrientedFixedBox;
+
     model Wall_rotational
       /* ---------------------------------------------
-                                                parameters
-                                    --------------------------------------------- */
+                                  parameters
+                  --------------------------------------------- */
       parameter SI.Mass m(min = 0) = 1 "Mass";
       parameter SI.Diameter D(min = 0) = 1 "Diameter";
       parameter StateSelect stateSelect = StateSelect.default "Priority to use s and v as states" annotation(
@@ -393,14 +552,14 @@ package PythagoraDevice
       parameter SI.Force g_f[3] = {0, -9.8, 0} "Gravity force";
       parameter SI.Density rho(min = 0) = 2.5e+3 "density, glass:2.3e+3kg/m^3" annotation(
         Dialog(group = "Material"));
-      parameter Real E(min = 0, unit="Pa") = 7.16e+10 "Young's modulus" annotation(
+      parameter Real E(min = 0, unit = "Pa") = 7.16e+10 "Young's modulus" annotation(
         Dialog(group = "Material"));
       parameter Real nue(min = 0) = 0.23 "Poisson's ratio" annotation(
         Dialog(group = "Material"));
-      //inertia
       /* ---------------------------------------------------------------------
-                                          reference https://kikyousan.com/physics/dynamics1/inertia3
-                                          ------------------------------------------------------------------------ */
+                                  inertia
+                                  reference https://kikyousan.com/physics/dynamics1/inertia3
+                   ------------------------------------------------------------------------ */
       parameter SI.Inertia I_11(min = 0) = 2 / 5 * m * (D / 2) ^ 2 "(1,1) element of inertia tensor" annotation(
         Dialog(group = "Inertia tensor (resolved in center of mass, parallel to frame_a)"));
       parameter SI.Inertia I_22(min = 0) = 2 / 5 * m * (D / 2) ^ 2 "(2,2) element of inertia tensor" annotation(
@@ -453,7 +612,7 @@ package PythagoraDevice
       //visualization
       parameter Real r_shape[3] = -{1, 0, 0} * D / 2;
       //collision
-      constant String selectShape = "ball";
+      constant String selectShape = "box";
       parameter PythagoraDevice.Interfaces.Geometry geometry(shape = selectShape, L = D, W = D, H = D);
     equation
 //Force and moment applied to an object
@@ -463,7 +622,6 @@ package PythagoraDevice
       F_d = Frames.resolve2(R, F_g);
       v_g = Frames.resolve1(R, v_d);
       w_g = Frames.resolve1(R, w_d);
-      
 //equation of equilibrium
       F_d = m * (der(v_d) + cross(w_d, v_d));
       M_d = I * der(w_d) + cross(w_d, I * w_d);
@@ -472,8 +630,10 @@ package PythagoraDevice
       v_g = der(position_g);
 //rotational
       w_g = der(angles_g);
-//Orientation instance R
+    //Orientation instance R
       R = Frames.axesRotations(sequence = {1, 2, 3}, angles = angles_g, der_angles = w_g);
+
+      
 //port
       Center_a.position = position_g;
       Center_a.R = R;
@@ -481,11 +641,12 @@ package PythagoraDevice
       Center_a.material.rho = rho;
       Center_a.material.E = E;
       Center_a.material.nue = nue;
+      Center_a.m = m;
       annotation(
         uses(Modelica(version = "3.2.3")),
         Icon(coordinateSystem(initialScale = 0.1), graphics = {Rectangle(fillColor = {170, 255, 255}, fillPattern = FillPattern.HorizontalCylinder, extent = {{-100, 20}, {100, -20}})}));
     end Wall_rotational;
-  
+
     model MultiBalls "Test model"
       parameter Integer n = 5 "Number of balls";
       parameter SI.Position position[n, 3] = fill(0.1, n, 3) "center position of balls";
@@ -540,8 +701,7 @@ package PythagoraDevice
     model ContactsBallBall
       import PythagoraDevice.Utilities.*;
       extends Interfaces.Partials.TwoPort;
-      
-    // parameter
+      // parameter
       parameter StateSelect stateSelect = StateSelect.prefer "Priority to use s_rel and v_rel as states" annotation(
         HideResult = true,
         Dialog(tab = "Advanced"));
@@ -549,12 +709,10 @@ package PythagoraDevice
         Dialog(tab = "Advanced"));
       parameter Real mu = 0.4;
       parameter Real mu0 = 0.6 "coefficient of static friction";
-      parameter Real e=0.6 "coefficient of restitution";
+      parameter Real e = 0.6 "coefficient of restitution";
       parameter Real v_brk = 1e-6;
-      parameter Real d_vis = 1e-3;  
-    
-      
-    // Variants
+      parameter Real d_vis = 1e-3;
+      // Variants
       SI.TranslationalSpringConstant c_t(final min = 0) "Spring constant";
       SI.TranslationalDampingConstant d_t(final min = 0) "Damping constant";
       SI.TranslationalSpringConstant c_n(final min = 0) "Spring constant";
@@ -565,7 +723,6 @@ package PythagoraDevice
       SI.Position s_a[3];
       SI.Position s_b[3];
       Real s_penetrate[3] "relative position vector of overlapping two objects";
-      
       Real s_radius[3];
       Real torque[3] "Moments between Centers";
       SI.Force f_n[3] "normal forces between Centers";
@@ -588,10 +745,8 @@ package PythagoraDevice
       Modelica.SIunits.Force f_nc[3] "Spring force";
       Modelica.SIunits.Force f_nd[3] "Linear damping force";
       Modelica.SIunits.Force f_nd2[3] "Linear damping force";
-    
-    
       Real v_gap "relative velocity; If two objects become closer, the relative velocity is negative.
-    If two objects become come away, the relative velocity is positive.";
+                If two objects become come away, the relative velocity is positive.";
       Real E_star;
       Real R_star;
       Real m_star;
@@ -603,27 +758,24 @@ package PythagoraDevice
       Real m_a;
       Real m_b;
       Real G_star;
-      
       Real f_coulomb;
       Real f_brk;
       Real v_st;
       Real v_coulomb;
       Real f_stribeck[3];
     equation
-    //nonlinear spring stiffness c_n and damping coefficient d_n for normal direction
-      1/E_star = (1-nue_a^2)/E_a+(1-nue_b^2)/E_b;
-      1/R_star = 1/(D_a/2)+1/(D_b/2);
-      1/m_star = 1/m_a + 1/m_b;
-      alpha = log(e)*sqrt(1/(log(e)^2+pi^2));
-      c_n = 4/3*E_star*sqrt(R_star*L_penetrate);
-      d_n = 2*sqrt((m_star * c_n)/(1+(pi/log(e))^2));
-      
-    //nonlinear spring stiffness c_t and damping coefficient d_t for tangent direction
-      c_t = 8*G_star*sqrt(R_star * L_penetrate);
-      1/G_star = 2 * (2 - nue_a) * (1 + nue_a) / E_a + 2 * (2 - nue_b) * (1 + nue_b) / E_b;
+//nonlinear spring stiffness c_n and damping coefficient d_n for normal direction
+      1 / E_star = (1 - nue_a ^ 2) / E_a + (1 - nue_b ^ 2) / E_b;
+      1 / R_star = 1 / (D_a / 2) + 1 / (D_b / 2);
+      1 / m_star = 1 / m_a + 1 / m_b;
+      alpha = log(e) * sqrt(1 / (log(e) ^ 2 + pi ^ 2));
+      c_n = 4 / 3 * E_star * sqrt(R_star * L_penetrate);
+      d_n = 2 * sqrt(m_star * c_n / (1 + (pi / log(e)) ^ 2));
+//nonlinear spring stiffness c_t and damping coefficient d_t for tangent direction
+      c_t = 8 * G_star * sqrt(R_star * L_penetrate);
+      1 / G_star = 2 * (2 - nue_a) * (1 + nue_a) / E_a + 2 * (2 - nue_b) * (1 + nue_b) / E_b;
       d_t = d_n;
-    
-    //Relative geometric relationships and penetration depth
+//Relative geometric relationships and penetration depth
       s_rel = s_b - s_a;
       L_gap = length(s_rel);
       L_threshold = D_a / 2 + D_b / 2;
@@ -632,28 +784,25 @@ package PythagoraDevice
       s_penetrate = L_penetrate * n_ab;
       v_rel = der(s_rel);
       v_gap = der(L_gap);
-    
-    //normal force
+//normal force
       f_n = f_nc + f_nd;
       f_nc = -c_n * s_penetrate;
-      f_nd = smooth(0, noEvent(if L_penetrate <> 0 then (if v_gap < 0 and length(f_nd2) > length(f_nc) then f_nc elseif v_gap >= 0 and  length(f_nd2) > length(f_nc) then -f_nc else f_nd2 ) else zeros(3)));  
-      f_nd2 = -d_n*length(v_rel)*n_ab;
-    
-    //tangent force
+      f_nd = smooth(0, noEvent(if L_penetrate <> 0 then if v_gap < 0 and length(f_nd2) > length(f_nc) then f_nc elseif v_gap >= 0 and length(f_nd2) > length(f_nc) then -f_nc else f_nd2 else zeros(3)));
+      f_nd2 = -d_n * length(v_rel) * n_ab;
+//tangent force
       v_n = v_rel * n_ab * n_ab;
       v_t = v_rel - v_n + cross(D_a / 2 * w_a + D_b / 2 * w_b, n_ab);
       der(s_t) = v_t;
-    
-    /* The reference of this friciton model is https://jp.mathworks.com/help/physmod/simscape/ref/translationalfriction.html */
+/* The reference of this friciton model is https://jp.mathworks.com/help/physmod/simscape/ref/translationalfriction.html */
       v_st = v_brk * sqrt(2);
       v_coulomb = v_brk / 10;
       f_coulomb = mu * length(f_n);
       f_brk = mu0 * length(f_n);
-      for i in 1:3 loop   // i shall not be declared
-            f_stribeck[i] = -sqrt(2 * exp(1)) * (f_brk - f_coulomb) * exp(-(v_t[i] / v_st) ^ 2) * v_t[i] / v_st;
+  for i in 1:3 loop
+// i shall not be declared
+        f_stribeck[i] = -sqrt(2 * exp(1)) * (f_brk - f_coulomb) * exp(-(v_t[i] / v_st) ^ 2) * v_t[i] / v_st;
       end for;
       f_t_friction = f_stribeck - f_coulomb * tanh(v_t / v_coulomb);
-    
       f_t_penetrate = (-c_t * s_t) - d_t * v_t;
       if L_penetrate == 0 then
         f_t = zeros(3);
@@ -667,15 +816,12 @@ package PythagoraDevice
           contactState = 2;
         end if;
       end if;
-    
-    //contact force
+//contact force
       f = f_n + f_t;
-      
-    //contact torque
+//contact torque
       s_radius = center_a.geometry.L * n_ab;
       torque = cross(s_radius, f_t);
-    
-    //port
+//port
       center_a.position = s_a;
       center_b.position = s_b;
       center_a.f = -f;
@@ -691,34 +837,30 @@ package PythagoraDevice
       center_a.material.nue = nue_a;
       center_b.material.nue = nue_b;
       center_a.m = m_a;
-      center_b.m = m_b;  
-    
-    //dummy
+      center_b.m = m_b;
+//dummy
       shapeCombi = PythagoraDevice.Components.Functions.determineShapeCombination(center_a.geometry.shape, center_b.geometry.shape);
       annotation(
         Icon(graphics = {Polygon(origin = {-1, 9}, fillColor = {255, 255, 0}, fillPattern = FillPattern.Solid, points = {{-55, 87}, {-49, 43}, {-47, 21}, {-95, 15}, {-47, -29}, {-59, -87}, {-13, -37}, {-11, -79}, {5, -47}, {21, -89}, {39, -37}, {87, -65}, {51, -15}, {93, -1}, {53, 15}, {77, 27}, {61, 27}, {85, 79}, {23, 43}, {9, 89}, {-7, 45}, {-55, 87}})}),
         experiment(StartTime = 0, StopTime = 0.74, Tolerance = 1e-6, Interval = 1.48e-05));
     end ContactsBallBall;
-    
+
     model ContactsBallFixedBox
       extends PythagoraDevice.Interfaces.Partials.PartialContact;
-      
       /* ---------------------------------------------
-                  Parameters
-      --------------------------------------------- */
-      parameter Real eps(min=0) = 1e-12 "minimum value of L_gap. To avoid division by zero where v_gap = der(L_gap), eps introduced." annotation(
+                              Parameters
+                  --------------------------------------------- */
+      parameter Real eps(min = 0) = 1e-12 "minimum value of L_gap. To avoid division by zero where v_gap = der(L_gap), eps introduced." annotation(
         Dialog(group = "Advanced"));
-    
       /* ---------------------------------------------
-                  Force and torque variables
-      --------------------------------------------- */   
+                              Force and torque variables
+                  --------------------------------------------- */
       SI.Force f_coulomb "Coulomb friction";
       SI.Force f_brk "breakaway friction";
       SI.Force f_stribeck[3] "Stribeck friction";
-        
       /* ---------------------------------------------------------------------------
-                  Position, velocity, length and angular velocity variables
-      ---------------------------------------------------------------------------- */  
+                              Position, velocity, length and angular velocity variables
+                  ---------------------------------------------------------------------------- */
       SI.Velocity v_st "Stribeck velocity threshold";
       SI.Velocity v_coulomb "Coulomb velocity threshold";
       SI.Velocity v_a[3] "velocity of conneting port a ";
@@ -726,57 +868,151 @@ package PythagoraDevice
       SI.Position XYZmin[3];
       SI.Position XYZmax[3];
       SI.Length D_a;
-      
+      //Test
+      Real w_ab[3];
+      Real v_test[3];
     equation
-    //nonlinear spring stiffness c_n and damping coefficient d_n for normal direction
+//nonlinear spring stiffness c_n and damping coefficient d_n for normal direction
       R_star = D_a / 2;
       m_star = m_a;
-      
-    //Relative geometric relationships and penetration depth
-      //closest point of two objects
+//Relative geometric relationships and penetration depth
+//closest point of two objects
       XYZmin = s_b - {center_b.geometry.L, center_b.geometry.W, center_b.geometry.H} / 2;
       XYZmax = s_b + {center_b.geometry.L, center_b.geometry.W, center_b.geometry.H} / 2;
       for i in 1:3 loop
         s_closestPoint[i] = max(XYZmin[i], min(s_a[i], XYZmax[i]));
       end for;
-      
-      //Relative geometric relationships
+//Relative geometric relationships
       s_rel = s_closestPoint - s_a;
-      L_gap = max(length(s_rel),eps); 
+      L_gap = max(length(s_rel), eps);
       L_threshold = D_a / 2;
       v_rel = der(s_a);
       n_ab = normalize(s_rel);
-      
-    //tangent force
-    /* The reference of this friciton model is https://jp.mathworks.com/help/physmod/simscape/ref/translationalfriction.html */
+//tangent force
+/* The reference of this friciton model is https://jp.mathworks.com/help/physmod/simscape/ref/translationalfriction.html */
+      v_t = v_rel - v_n + cross(L_contact_a * w_a + L_contact_b * w_b, n_ab);
       v_st = v_brk * sqrt(2);
       v_coulomb = v_brk / 10;
       f_coulomb = mu * length(f_n);
       f_brk = mu0 * length(f_n);
-      for i in 1:3 loop   // i shall not be declared
-            f_stribeck[i] = -sqrt(2 * exp(1)) * (f_brk - f_coulomb) * exp(-(v_t[i] / v_st) ^ 2) * v_t[i] / v_st;
+  for i in 1:3 loop
+// i shall not be declared
+        f_stribeck[i] = -sqrt(2 * exp(1)) * (f_brk - f_coulomb) * exp(-(v_t[i] / v_st) ^ 2) * v_t[i] / v_st;
       end for;
       f_t_friction = f_stribeck - f_coulomb * tanh(v_t / v_coulomb);
       L_contact_a = D_a / 2;
       L_contact_b = length(s_closestPoint - s_b);
-    
-    //contact torque
+//contact torque
       s_torque = D_a * n_ab;
-     
-    //viscous friciton
+//viscous friciton
       v_a = der(s_a);
       if L_penetrate == 0 then
         f_vis = zeros(3);
       else
         f_vis = -d_vis * v_a;
       end if;
-      
-    //port
+//contact force
+      f = f_n + f_t + f_vis;
+//contact torque
+      torque = cross(s_torque, f_t);
+//port
       center_a.geometry.L = D_a;
-    
-    //assertion
+//assertion
       assert(f_brk >= f_coulomb, "f_brk must be greater than f_coulomb.");
+//Test
+      w_ab = cross(L_contact_a * w_a + L_contact_b * w_b, n_ab);
+      v_test = v_rel - v_n;
     end ContactsBallFixedBox;
+
+    model ContactsBallOrientedFixedBox
+      extends PythagoraDevice.Interfaces.Partials.PartialContact;
+      /* ---------------------------------------------
+                              Parameters
+                  --------------------------------------------- */
+      parameter Real eps(min = 0) = 1e-12 "minimum value of L_gap. To avoid division by zero where v_gap = der(L_gap), eps introduced." annotation(
+        Dialog(group = "Advanced"));
+      /* ---------------------------------------------
+                              Force and torque variables
+                  --------------------------------------------- */
+      SI.Force f_coulomb "Coulomb friction";
+      SI.Force f_brk "breakaway friction";
+      SI.Force f_stribeck[3] "Stribeck friction";
+      /* ---------------------------------------------------------------------------
+                              Position, velocity, length and angular velocity variables
+                  ---------------------------------------------------------------------------- */
+      SI.Velocity v_st "Stribeck velocity threshold";
+      SI.Velocity v_coulomb "Coulomb velocity threshold";
+      SI.Velocity v_a[3] "velocity of conneting port a ";
+      SI.Position s_closestPoint[3] "closest point to ball on box in global frame";
+      SI.Position XYZmin[3];
+      SI.Position XYZmax[3];
+      SI.Length D_a;
+      /* ---------------------------------------------------------------------------
+                              Coordinate transformation
+                  ---------------------------------------------------------------------------- */
+      Frames.Orientation R;
+      SI.Position s_a_d[3] "Position of center_a port in body-fixed fram of the box";
+      SI.Position s_b_d[3] "Position of center_b port in body-fixed fram of the box";
+      SI.AngularVelocity w_a_d[3];
+      SI.AngularVelocity w_b_d[3];
+      SI.Force f_d[3] "Forces between Centers";
+      SI.Torque torque_d[3] "Moments between Centers";
+    equation
+//Coordinate transformation
+      s_a_d = Frames.resolve2(R, s_a);
+      s_b_d = Frames.resolve2(R, s_b);
+      w_a_d = Frames.resolve2(R, w_a);
+      w_b_d = Frames.resolve2(R, w_b);
+      f = Frames.resolve1(R, f_d);
+      torque = Frames.resolve1(R, torque_d);
+//nonlinear spring stiffness c_n and damping coefficient d_n for normal direction
+      R_star = D_a / 2;
+      m_star = m_a;
+//Relative geometric relationships and penetration depth
+//closest point of two objects
+      XYZmin = s_b_d - {center_b.geometry.L, center_b.geometry.W, center_b.geometry.H} / 2;
+      XYZmax = s_b_d + {center_b.geometry.L, center_b.geometry.W, center_b.geometry.H} / 2;
+      for i in 1:3 loop
+        s_closestPoint[i] = max(XYZmin[i], min(s_a_d[i], XYZmax[i]));
+      end for;
+//Relative geometric relationships
+      s_rel = s_closestPoint - s_a_d;
+      L_gap = max(length(s_rel), eps);
+      L_threshold = D_a / 2;
+      v_rel = der(s_a_d);
+      n_ab = normalize(s_rel);
+//tangent force
+/* The reference of this friciton model is https://jp.mathworks.com/help/physmod/simscape/ref/translationalfriction.html */
+      v_st = v_brk * sqrt(2);
+      v_coulomb = v_brk / 10;
+      f_coulomb = mu * length(f_n);
+      f_brk = mu0 * length(f_n);
+      v_t = v_rel - v_n + cross(L_contact_a * w_a_d + L_contact_b * w_b_d, n_ab);
+  for i in 1:3 loop
+// i shall not be declared
+        f_stribeck[i] = -sqrt(2 * exp(1)) * (f_brk - f_coulomb) * exp(-(v_t[i] / v_st) ^ 2) * v_t[i] / v_st;
+      end for;
+      f_t_friction = f_stribeck - f_coulomb * tanh(v_t / v_coulomb);
+      L_contact_a = D_a / 2;
+      L_contact_b = length(s_closestPoint - s_b_d);
+//contact torque
+      s_torque = D_a * n_ab;
+      torque_d = cross(s_torque, f_t);
+//viscous friciton
+      v_a = der(s_a_d);
+      if L_penetrate == 0 then
+        f_vis = zeros(3);
+      else
+        f_vis = -d_vis * v_a;
+      end if;
+//contact force
+      f_d = f_n + f_t + f_vis;
+//port
+      center_a.geometry.L = D_a;
+      center_b.R = R;
+//assertion
+      assert(f_brk >= f_coulomb, "f_brk must be greater than f_coulomb.");
+    end ContactsBallOrientedFixedBox;
 
     package Functions
       function determineShapeCombination
@@ -794,6 +1030,456 @@ package PythagoraDevice
         end if;
       end determineShapeCombination;
     end Functions;
+    
+    model BallTest1
+      /* ---------------------------------------------
+                              Basic parameters
+                  --------------------------------------------- */
+      parameter SI.Mass m(min = 0) = 4 / 3 * pi * (D / 2) ^ 3 * rho "Mass";
+      parameter SI.Diameter D(min = 0) = 11.3e-3 "Diameter";
+      parameter StateSelect stateSelect = StateSelect.default "Priority to use s and v as states" annotation(
+        Dialog(tab = "Advanced"));
+      parameter SI.Acceleration g_f[3] = {0, -9.8, 0} "Gravitational acceleration";
+      /* ---------------------------------------------
+                              Material parameters
+                  --------------------------------------------- */
+      parameter SI.Density rho(min = 0) = 2.5e+3 "density, glass:2.3e+3kg/m^3" annotation(
+        Dialog(group = "Material"));
+      parameter Real E(min = 0, unit = "Pa") = 7.16e+10 "Young's modulus" annotation(
+        Dialog(group = "Material"));
+      parameter Real nue(min = 0) = 0.23 "Poisson's ratio" annotation(
+        Dialog(group = "Material"));
+      /* ---------------------------------------------------------------------
+                              Inertia parameters
+                  reference https://kikyousan.com/physics/dynamics1/inertia3
+                  ------------------------------------------------------------------------ */
+      parameter SI.Inertia I(min = 0) = 2 / 5 * m * (D / 2) ^ 2 "inertia of ball" annotation(
+        Dialog(group = "Inertia tensor (resolved in center of mass, parallel to frame_a)"));
+      /* ---------------------------------------------
+                              initial condition
+                  --------------------------------------------- */
+      parameter SI.Position position_ini[3] = {0, 0, 0} "initial centor position of object in world frame" annotation(
+        Dialog(group = "Initialization"));
+      parameter SI.AngularVelocity w_g_ini[3] = {0, 0, 0} annotation(
+        Dialog(group = "Initialization"));
+      parameter SI.Velocity v_g_ini[3] = {0, 0, 0} annotation(
+        Dialog(group = "Initialization"));
+    //  parameter SI.Angle angles_g_ini[3] = {0, 0, 0} "initial angles in world frame" annotation(
+    //    Dialog(group = "Initialization"));
+      /* ---------------------------------------------
+                              Visialization
+                  --------------------------------------------- */
+      parameter Types.Color sphereColor = Modelica.Mechanics.MultiBody.Types.Defaults.BodyColor annotation(
+        Dialog(tab = "Visualization"));
+      parameter String shapeType = "sphere" annotation(
+        Dialog(tab = "Visualization"));
+      parameter Real e_vis1[3] = {D * 0.003, 0, 0} annotation(
+        Dialog(tab = "Visualization"));
+      parameter Real e_vis2[3] = {0, 0, 0} annotation(
+        Dialog(tab = "Visualization"));
+      parameter Real color1[3] = {255, 255, 0} annotation(
+        Dialog(tab = "Visualization"));
+      parameter Real color2[3] = {0, 0, 255} annotation(
+        Dialog(tab = "Visualization"));
+      parameter Real color3[3] = {255, 0, 0} annotation(
+        Dialog(tab = "Visualization"));
+      /* ---------------------------------------------
+                              Variables
+                  --------------------------------------------- */
+      //Force and moment
+      SI.Force F_g[3] "Force applied to an object";
+      SI.Torque M_g[3] "moment";
+      //translational
+      SI.Velocity v_g[3](start = v_g_ini) "Absolute velocity of component　in world fram";
+      SI.Acceleration a_g[3](start = {0, 0, 0}) "Absolute acceleration of component　in world fram";
+      SI.Position position_g[3](start = position_ini) "Absolute position of center of component　in world fram";
+      //rotational
+      SI.AngularVelocity w_g[3](start = w_g_ini) "Absolute angular velocity of frame_a resolved in world fram";
+      //  SI.AngularAcceleration z_d[3] "Absolute angular acceleration of frame_a resolved in body-fixed fram";
+      //  SI.Angle angles_d[3];
+      SI.Angle angles_g[3];
+      Frames.Orientation R;
+      //visualization
+      Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape vis1(shapeType = shapeType, color = color1, length = D, width = D, height = D, lengthDirection = {1, 0, 0}, widthDirection = {0, 1, 0}, r_shape = r_shape + {0, D * 0.003, 0}, r = position_g, R = R);
+      Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape vis2(shapeType = shapeType, color = color2, length = D, width = D, height = D, lengthDirection = {1, 0, 0}, widthDirection = {0, 1, 0}, r_shape = r_shape, r = position_g, R = R);
+      /* ---------------------------------------------
+                              Port
+                  --------------------------------------------- */
+      PythagoraDevice.Interfaces.Center_a center annotation(
+        Placement(visible = true, transformation(origin = {0, 0}, extent = {{-10, -10}, {10, 10}}, rotation = 0), iconTransformation(origin = {0, 0}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
+      /* ---------------------------------------------
+                              Test
+            --------------------------------------------- */
+      Modelica.Mechanics.MultiBody.Frames.Quaternions.Orientation Q;
+    
+      Real angle;
+      Real angle_direction[3];
+    
+      parameter Real eps = 1e-6;
+      //Test
+    //  parameter Real arrowHeadRatio = 0.1;
+    //  parameter Real arrowLengthRatio = 0.01 "Force arrow scaling (length = angularVelocity/N_to_m)" annotation(
+    //    Dialog(group = "if animation = true", enable = animation));
+    //  Real slipRatio "0%, no slip; 100%, slip; <0, Idling(空回り)";
+      Real w_g_length;
+      Real v_g_length;
+      parameter Integer forceColor[3] = {0, 0, 0};
+    //  SI.Position w_in_m[3] = w_g * arrowLengthRatio;
+    //  PythagoraDevice.Visualizers.Arrow angularVelocityArrow(diameter = angularVelocityDiameter, color = forceColor, specularCoefficient = 1, R = R, r = position_g, r_tail = w_in_m, r_head = -w_in_m);
+    //  Real der_w_g[3];
+    
+      //Test
+      Frames.Orientation Rpre;
+      Frames.Orientation Rcur;
+    
+      parameter Real dt = 0.01;
+      SI.Angle d_angles[3];
+      Real d_angles_sum[3](start=zeros(3));
+    protected
+      parameter SI.Diameter angularVelocityDiameter = D * arrowHeadRatio;
+      parameter Real r_shape[3] = if shapeType == "sphere" then -{1, 0, 0} * D / 2 else {0, 0, 0} "Fix origin and center of gravity of sphere";
+      //  parameter Real r_shape[3] = -{1, 0, 0} * D / 2;
+      constant String selectShape = "ball";
+      parameter PythagoraDevice.Interfaces.Geometry geometry(shape = selectShape, L = D, W = D, H = D);
+      parameter PythagoraDevice.Interfaces.Material material(rho = rho, E = E, nue = nue);
+    
+    equation
+    //Force and moment applied to an object
+      F_g = center.f + m * g_f;
+      M_g = center.t;
+    //equation of equilibrium
+      F_g = m * der(v_g);
+      M_g = I * der(w_g);
+    //translational
+      a_g = der(v_g);
+      v_g = der(position_g);
+    //rotational
+      w_g = der(angles_g);
+    //Orientation instance R
+      angle = length(angles_g);
+      angle_direction = normalize(angles_g);
+      Q = Modelica.Mechanics.MultiBody.Frames.Quaternions.planarRotation(angle_direction, angle);
+    //R = Frames.from_Q(Q, w_g);
+    
+    //port
+      center.position = position_g;
+      center.R = R;
+      center.m = m;
+      center.geometry = geometry;
+      center.material = material;
+    
+    //Post
+      w_g_length = length(w_g);
+      v_g_length = length(v_g);
+      der_w_g = der(w_g);
+      slipRatio = if v_g[1] <> 0 and v_g[2] <> 0 and v_g[3] <> 0 then 100 * (v_g_length - w_g_length * D / 2) / v_g_length else 999;
+    
+    //Test
+      R.T=Rpre.T*Rcur.T;
+      R.w=w_g;
+      
+      if time < dt then
+        Rpre=Frames.axesRotations(sequence = {1, 2, 3}, angles = {1e-6,1e-6,1e-6}, der_angles = zeros(3));
+      else
+        for i in 1:3 loop
+          for j in 1:3 loop
+            Rpre.T[i, j] = delay(R.T[i, j], dt);
+          end for;
+        end for;
+        Rpre.w=w_g;
+    
+      end if;
+    
+      Rcur=Frames.axesRotations(sequence = {1, 2, 3}, angles = d_angles, der_angles = w_g);
+      d_angles = w_g*dt;
+    
+    
+      //check angle
+    algorithm
+      d_angles_sum := d_angles_sum + d_angles;
+      annotation(
+        Icon(graphics = {Ellipse(fillColor = {170, 255, 255}, fillPattern = FillPattern.Sphere, extent = {{-100, 100}, {100, -100}}, endAngle = 360), Line(origin = {179.403, 0.196862}, points = {{-72, 78}, {-72, -82}}, thickness = 1.5, arrow = {Arrow.None, Arrow.Filled}, arrowSize = 18), Text(origin = {98, -86}, extent = {{-16, 8}, {36, -22}}, textString = "g"), Text(origin = {-2, 117}, extent = {{-68, 17}, {68, -17}}, textString = "%name")}, coordinateSystem(initialScale = 0.1)),
+        __OpenModelica_simulationFlags(lv = "LOG_STATS", outputFormat = "mat", s = "dassl"),
+        experiment(StartTime = 0, StopTime = 3, Tolerance = 1e-06, Interval = 0.006));
+    end BallTest1;
+    
+    model Wall_rotational_Test
+      /* ---------------------------------------------
+                                  parameters
+                  --------------------------------------------- */
+      parameter SI.Mass m(min = 0) = 1 "Mass";
+      parameter SI.Diameter D(min = 0) = 1 "Diameter";
+      parameter StateSelect stateSelect = StateSelect.default "Priority to use s and v as states" annotation(
+        Dialog(tab = "Advanced"));
+      parameter SI.Force g_f[3] = {0, -9.8, 0} "Gravity force";
+      parameter SI.Density rho(min = 0) = 2.5e+3 "density, glass:2.3e+3kg/m^3" annotation(
+        Dialog(group = "Material"));
+      parameter Real E(min = 0, unit = "Pa") = 7.16e+10 "Young's modulus" annotation(
+        Dialog(group = "Material"));
+      parameter Real nue(min = 0) = 0.23 "Poisson's ratio" annotation(
+        Dialog(group = "Material"));
+      /* ---------------------------------------------------------------------
+                                  inertia
+                                  reference https://kikyousan.com/physics/dynamics1/inertia3
+                   ------------------------------------------------------------------------ */
+      parameter SI.Inertia I_11(min = 0) = 2 / 5 * m * (D / 2) ^ 2 "(1,1) element of inertia tensor" annotation(
+        Dialog(group = "Inertia tensor (resolved in center of mass, parallel to frame_a)"));
+      parameter SI.Inertia I_22(min = 0) = 2 / 5 * m * (D / 2) ^ 2 "(2,2) element of inertia tensor" annotation(
+        Dialog(group = "Inertia tensor (resolved in center of mass, parallel to frame_a)"));
+      parameter SI.Inertia I_33(min = 0) = 2 / 5 * m * (D / 2) ^ 2 "(3,3) element of inertia tensor" annotation(
+        Dialog(group = "Inertia tensor (resolved in center of mass, parallel to frame_a)"));
+      parameter SI.Inertia I_21 = 0 "(2,1) element of inertia tensor" annotation(
+        Dialog(group = "Inertia tensor (resolved in center of mass, parallel to frame_a)"));
+      parameter SI.Inertia I_31 = 0 "(3,1) element of inertia tensor" annotation(
+        Dialog(group = "Inertia tensor (resolved in center of mass, parallel to frame_a)"));
+      parameter SI.Inertia I_32 = 0 "(3,2) element of inertia tensor" annotation(
+        Dialog(group = "Inertia tensor (resolved in center of mass, parallel to frame_a)"));
+      parameter SI.Inertia I[3, 3] = [I_11, I_21, I_31; I_21, I_22, I_32; I_31, I_32, I_33] "inertia tensor";
+      //initial condition
+      parameter SI.Angle angles_g_start[3] = {0, 0, 0} "initial angles of object in world frame" annotation(
+        Dialog(group = "Initialization"));
+      parameter SI.Position position_ini[3] = {0, 0, 0} "initial centor position of object in world frame" annotation(
+        Dialog(group = "Initialization"));
+      parameter SI.AngularVelocity w_d_ini[3] = {0, 0, 0} annotation(
+        Dialog(group = "Initialization"));
+      parameter SI.Velocity v_g_ini[3] = {0, 0, 0} annotation(
+        Dialog(group = "Initialization"));
+      //Visialization
+      parameter Types.Color sphereColor = Modelica.Mechanics.MultiBody.Types.Defaults.BodyColor annotation(
+        Dialog(tab = "Visualization"));
+      parameter String shapeType = "box" annotation(
+        Dialog(tab = "Visualization"));
+      //port
+      PythagoraDevice.Interfaces.Center_a Center_a annotation(
+        Placement(visible = true, transformation(origin = {0, 0}, extent = {{-10, -10}, {10, 10}}, rotation = 0), iconTransformation(origin = {0, 0}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
+      //Force and moment
+      SI.Force F_g[3] "Force applied to an object";
+      SI.Force F_d[3] "Force applied to an object";
+      SI.Torque M_d[3] "外力によるモーメント";
+      //translational
+      SI.Velocity v_g[3](start = v_g_ini) "Absolute velocity of component　in world fram";
+      SI.Velocity v_d[3](start = {0, 0, 0}) "Absolute velocity of component in body-fixed fram";
+      SI.Acceleration a_g[3](start = {0, 0, 0}) "Absolute acceleration of component　in world fram";
+      SI.Position position_g[3](start = position_ini) "Absolute position of center of component　in world fram";
+      //rotational
+      SI.AngularVelocity w_d[3](start = w_d_ini) "Absolute angular velocity of frame_a resolved in body-fixed fram";
+      SI.AngularVelocity w_g[3] "Absolute angular velocity of frame_a resolved in world fram";
+      //  SI.AngularAcceleration z_d[3] "Absolute angular acceleration of frame_a resolved in body-fixed fram";
+      //  SI.Angle angles_d[3];
+      SI.Angle angles_g[3](start = angles_g_start);
+      Frames.Orientation R;
+      //visualization
+      Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape vis(shapeType = shapeType, color = {255, 255, 255}, length = D, width = D, height = D, lengthDirection = {1, 0, 0}, widthDirection = {0, 1, 0}, r_shape = r_shape, r = position_g, R = R);
+    protected
+      //visualization
+      parameter Real r_shape[3] = -{1, 0, 0} * D / 2;
+      //collision
+      constant String selectShape = "box";
+      parameter PythagoraDevice.Interfaces.Geometry geometry(shape = selectShape, L = D, W = D, H = D);
+    equation
+    //Force and moment applied to an object
+      F_g = Center_a.f + m * g_f;
+      M_d = Center_a.t;
+    //Coordinate transformation
+      F_d = Frames.resolve2(R, F_g);
+      v_g = Frames.resolve1(R, v_d);
+      w_g = Frames.resolve1(R, w_d);
+    //equation of equilibrium
+      F_d = m * (der(v_d) + cross(w_d, v_d));
+      M_d = I * der(w_d) + cross(w_d, I * w_d);
+    //translational
+      a_g = der(v_g);
+      v_g = der(position_g);
+    //rotational
+      w_g = der(angles_g);
+    //Orientation instance R
+      R = Frames.axesRotations(sequence = {1, 2, 3}, angles = angles_g, der_angles = w_g);
+    
+      
+    //port
+      Center_a.position = position_g;
+      Center_a.R = R;
+      Center_a.geometry = geometry;
+      Center_a.material.rho = rho;
+      Center_a.material.E = E;
+      Center_a.material.nue = nue;
+      Center_a.m = m;
+      annotation(
+        uses(Modelica(version = "3.2.3")),
+        Icon(coordinateSystem(initialScale = 0.1), graphics = {Rectangle(fillColor = {170, 255, 255}, fillPattern = FillPattern.HorizontalCylinder, extent = {{-100, 20}, {100, -20}})}));
+    end Wall_rotational_Test;
+    
+    model BallTest2
+      /* ---------------------------------------------
+                              Basic parameters
+                  --------------------------------------------- */
+      parameter SI.Mass m(min = 0) = 4 / 3 * pi * (D / 2) ^ 3 * rho "Mass";
+      parameter SI.Diameter D(min = 0) = 11.3e-3 "Diameter";
+      parameter StateSelect stateSelect = StateSelect.default "Priority to use s and v as states" annotation(
+        Dialog(tab = "Advanced"));
+      parameter SI.Acceleration g_f[3] = {0, -9.8, 0} "Gravitational acceleration";
+      /* ---------------------------------------------
+                              Material parameters
+                  --------------------------------------------- */
+      parameter SI.Density rho(min = 0) = 2.5e+3 "density, glass:2.3e+3kg/m^3" annotation(
+        Dialog(group = "Material"));
+      parameter Real E(min = 0, unit = "Pa") = 7.16e+10 "Young's modulus" annotation(
+        Dialog(group = "Material"));
+      parameter Real nue(min = 0) = 0.23 "Poisson's ratio" annotation(
+        Dialog(group = "Material"));
+      /* ---------------------------------------------------------------------
+                              Inertia parameters
+                  reference https://kikyousan.com/physics/dynamics1/inertia3
+                  ------------------------------------------------------------------------ */
+      parameter SI.Inertia I(min = 0) = 2 / 5 * m * (D / 2) ^ 2 "inertia of ball" annotation(
+        Dialog(group = "Inertia tensor (resolved in center of mass, parallel to frame_a)"));
+      /* ---------------------------------------------
+                              initial condition
+                  --------------------------------------------- */
+      parameter SI.Position position_ini[3] = {0, 0, 0} "initial centor position of object in world frame" annotation(
+        Dialog(group = "Initialization"));
+      parameter SI.AngularVelocity w_g_ini[3] = {0, 0, 0} annotation(
+        Dialog(group = "Initialization"));
+      parameter SI.Velocity v_g_ini[3] = {0, 0, 0} annotation(
+        Dialog(group = "Initialization"));
+      parameter SI.Angle angles_g_ini[3] = {0, 0, 0} "initial angles in world frame" annotation(
+        Dialog(group = "Initialization"));
+      /* ---------------------------------------------
+                              Visialization
+                  --------------------------------------------- */
+      parameter Types.Color sphereColor = Modelica.Mechanics.MultiBody.Types.Defaults.BodyColor annotation(
+        Dialog(tab = "Visualization"));
+      parameter String shapeType = "sphere" annotation(
+        Dialog(tab = "Visualization"));
+      parameter Real e_vis1[3] = {D * 0.003, 0, 0} annotation(
+        Dialog(tab = "Visualization"));
+      parameter Real e_vis2[3] = {0, 0, 0} annotation(
+        Dialog(tab = "Visualization"));
+      parameter Real color1[3] = {255, 255, 0} annotation(
+        Dialog(tab = "Visualization"));
+      parameter Real color2[3] = {0, 0, 255} annotation(
+        Dialog(tab = "Visualization"));
+      parameter Real color3[3] = {255, 0, 0} annotation(
+        Dialog(tab = "Visualization"));
+      /* ---------------------------------------------
+                              Variables
+                  --------------------------------------------- */
+      //Force and moment
+      SI.Force F_g[3] "Force applied to an object";
+      SI.Torque M_g[3] "moment";
+      //translational
+      SI.Velocity v_g[3](start = v_g_ini) "Absolute velocity of component　in world fram";
+      SI.Acceleration a_g[3](start = {0, 0, 0}) "Absolute acceleration of component　in world fram";
+      SI.Position position_g[3](start = position_ini) "Absolute position of center of component　in world fram";
+      //rotational
+      SI.AngularVelocity w_g[3](start = w_g_ini) "Absolute angular velocity of frame_a resolved in world fram";
+      //  SI.AngularAcceleration z_d[3] "Absolute angular acceleration of frame_a resolved in body-fixed fram";
+      //  SI.Angle angles_d[3];
+      SI.Angle angles_g[3](start = angles_g_ini);
+      Frames.Orientation R;
+      //visualization
+      Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape vis1(shapeType = shapeType, color = color1, length = D, width = D, height = D, lengthDirection = {1, 0, 0}, widthDirection = {0, 1, 0}, r_shape = r_shape + e_vis1, r = position_g, R = R);
+      Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape vis2(shapeType = shapeType, color = color2, length = D, width = D, height = D, lengthDirection = {1, 0, 0}, widthDirection = {0, 1, 0}, r_shape = r_shape + e_vis2, r = position_g, R = R);
+      /* ---------------------------------------------
+                              Port
+                  --------------------------------------------- */
+      PythagoraDevice.Interfaces.Center_a center annotation(
+        Placement(visible = true, transformation(origin = {0, 0}, extent = {{-10, -10}, {10, 10}}, rotation = 0), iconTransformation(origin = {0, 0}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
+      /* ---------------------------------------------
+                              Test
+            --------------------------------------------- */
+      Modelica.Mechanics.MultiBody.Frames.Quaternions.Orientation Q;
+      Real angle;
+      Real angle_direction[3];
+      Real a[3];
+      parameter Real eps = 1e-6;
+      //Test
+      parameter Real arrowHeadRatio = 0.1;
+      parameter Real arrowLengthRatio = 0.01 "Force arrow scaling (length = angularVelocity/N_to_m)" annotation(
+        Dialog(group = "if animation = true", enable = animation));
+      Real slipRatio "0%, no slip; 100%, slip; <0, Idling(空回り)";
+      Real w_g_length;
+      Real v_g_length;
+      parameter Integer forceColor[3] = {0, 0, 0};
+      SI.Position w_in_m[3] = w_g * arrowLengthRatio;
+    //  PythagoraDevice.Visualizers.Arrow angularVelocityArrow(diameter = angularVelocityDiameter, color = forceColor, specularCoefficient = 1, R = R, r = position_g, r_tail = w_in_m, r_head = -w_in_m);
+      Real der_w_g[3];
+    
+      //Test
+      Frames.Orientation Rpre;
+      Frames.Orientation Rcur;
+      parameter Real dt = 0.01;
+      SI.Angle d_angles[3];
+      Real d_angles_sum[3](start=zeros(3));
+    protected
+      parameter SI.Diameter angularVelocityDiameter = D * arrowHeadRatio;
+      parameter Real r_shape[3] = if shapeType == "sphere" then -{1, 0, 0} * D / 2 else {0, 0, 0} "Fix origin and center of gravity of sphere";
+      //  parameter Real r_shape[3] = -{1, 0, 0} * D / 2;
+      constant String selectShape = "ball";
+      parameter PythagoraDevice.Interfaces.Geometry geometry(shape = selectShape, L = D, W = D, H = D);
+      parameter PythagoraDevice.Interfaces.Material material(rho = rho, E = E, nue = nue);
+    
+    equation
+    //Force and moment applied to an object
+      F_g = center.f + m * g_f;
+      M_g = center.t;
+    //equation of equilibrium
+      F_g = m * der(v_g);
+      M_g = I * der(w_g);
+    //translational
+      a_g = der(v_g);
+      v_g = der(position_g);
+    //rotational
+      w_g = der(angles_g);
+    //Orientation instance R
+      angle = length(angles_g);
+      angle_direction = normalize(angles_g);
+      Q = Modelica.Mechanics.MultiBody.Frames.Quaternions.planarRotation(angle_direction, angle);
+    //R = Frames.from_Q(Q, w_g);
+    
+    //port
+      center.position = position_g;
+      center.R = R;
+      center.m = m;
+      center.geometry = geometry;
+      center.material = material;
+    
+    //Post
+      w_g_length = length(w_g);
+      v_g_length = length(v_g);
+      der_w_g = der(w_g);
+      slipRatio = if v_g[1] <> 0 and v_g[2] <> 0 and v_g[3] <> 0 then 100 * (v_g_length - w_g_length * D / 2) / v_g_length else 999;
+    
+    //Test
+      R.T=Rpre.T*Rcur.T;
+      R.w=w_g;
+      
+      
+      if time < dt then
+        a = {1e-6,1e-6,1e-6};
+        Rpre=Frames.axesRotations(sequence = {1, 2, 3}, angles = {1e-6,1e-6,1e-6}, der_angles = zeros(3));
+        
+      else
+        for i in 1:3 loop
+          for j in 1:3 loop
+            Rpre.T[i, j] = delay(R.T[i, j], dt);
+          end for;
+        end for;
+        Rpre.w=w_g;
+        a = {1e-6,1e-6,1e-6};
+      end if;
+    
+      Rcur=Frames.axesRotations(sequence = {1, 2, 3}, angles = d_angles, der_angles = w_g);
+      d_angles = w_g*dt;
+      
+      //check angle
+    algorithm
+      d_angles_sum := d_angles_sum + d_angles;
+      annotation(
+        Icon(graphics = {Ellipse(fillColor = {170, 255, 255}, fillPattern = FillPattern.Sphere, extent = {{-100, 100}, {100, -100}}, endAngle = 360), Line(origin = {179.403, 0.196862}, points = {{-72, 78}, {-72, -82}}, thickness = 1.5, arrow = {Arrow.None, Arrow.Filled}, arrowSize = 18), Text(origin = {98, -86}, extent = {{-16, 8}, {36, -22}}, textString = "g"), Text(origin = {-2, 117}, extent = {{-68, 17}, {68, -17}}, textString = "%name")}, coordinateSystem(initialScale = 0.1)),
+        __OpenModelica_simulationFlags(lv = "LOG_STATS", outputFormat = "mat", s = "dassl"),
+        experiment(StartTime = 0, StopTime = 3, Tolerance = 1e-06, Interval = 0.006));
+    end BallTest2;
     annotation(
       Icon(graphics = {Ellipse(origin = {-46, 18}, fillColor = {0, 255, 0}, fillPattern = FillPattern.Sphere, extent = {{-50, 52}, {50, -52}}, endAngle = 360), Rectangle(origin = {64, -20}, fillColor = {170, 0, 0}, fillPattern = FillPattern.Solid, extent = {{-22, 74}, {22, -74}})}));
   end Components;
@@ -897,7 +1583,7 @@ package PythagoraDevice
 
     record Material
       SI.Density rho(min = 0) "density";
-      Real E(min = 0, unit="Pa") "Young's modulus";
+      Real E(min = 0, unit = "Pa") "Young's modulus";
       Real nue(min = 0) "Poisson's ratio";
     end Material;
 
@@ -906,7 +1592,7 @@ package PythagoraDevice
       SI.Length L "length";
       SI.Length W "wide";
       SI.Length H "height";
-      SI.Mass m "Mass";  
+      SI.Mass m "Mass";
     end Geometry;
 
     package Partials "Partial models"
@@ -923,24 +1609,21 @@ package PythagoraDevice
       end TwoPort;
 
       partial model PartialContact
-      
         import PythagoraDevice.Utilities.*;
         extends PythagoraDevice.Interfaces.Partials.TwoPort;
-        
         /* ---------------------------------------------
-                    Parameters
-        --------------------------------------------- */
+                                    Parameters
+                        --------------------------------------------- */
         parameter SI.Distance s_nominal[3] = fill(1e-4, 3) "Nominal value of s_rel (used for scaling)" annotation(
           Dialog(tab = "Advanced"));
         parameter Real mu = 0.4 "Coefficient of dynamic friction";
         parameter Real mu0 = 0.6 "Coefficient of static friction";
         parameter Real e = 0.6 "Coefficient of restitution";
-        parameter SI.Velocity v_brk(min=0) = 1e-6 "Breakaway friction velocity";
-        parameter SI.TranslationalDampingConstant d_vis(min=0) = 1e-3 "Viscous friction coefficient";
-      
+        parameter SI.Velocity v_brk(min = 0) = 1e-6 "Breakaway friction velocity";
+        parameter SI.TranslationalDampingConstant d_vis(min = 0) = 1e-3 "Viscous friction coefficient";
         /* ---------------------------------------------
-                    Force and torque variables
-        --------------------------------------------- */    
+                                    Force and torque variables
+                        --------------------------------------------- */
         SI.Force f[3] "Forces between Centers";
         SI.Force f_n[3] "Forces between Centers";
         SI.Force f_t[3] "Forces between Centers";
@@ -951,10 +1634,9 @@ package PythagoraDevice
         SI.Force f_t_penetrate[3] "Tangent force by penetration";
         SI.Force f_vis[3] "viscosity force";
         SI.Torque torque[3] "Moments between Centers";
-      
         /* ---------------------------------------------------------------------------
-                    Position, velocity, length and angular velocity variables
-        ---------------------------------------------------------------------------- */    
+                                    Position, velocity, length and angular velocity variables
+                        ---------------------------------------------------------------------------- */
         SI.Position s_rel[3](nominal = s_nominal) "Relative distance (= center_b.s - center_a.s)";
         SI.Position s_penetrate[3] "Relative position vector of overlapping two objects";
         SI.Position s_torque[3] "Vector of between ball(center_a port) to contact point";
@@ -965,7 +1647,7 @@ package PythagoraDevice
         SI.Velocity v_n[3] "normal direction velocity";
         SI.Velocity v_t[3] "tangent direction velocity";
         SI.Velocity v_gap "relative velocity; If two objects become closer, the relative velocity is negative.
-              If two objects become come away, the relative velocity is positive.";
+                              If two objects become come away, the relative velocity is positive.";
         SI.Length L_gap "gap of two objects";
         SI.Length L_threshold "Collision detection threshold";
         SI.Length L_penetrate "penetration";
@@ -974,11 +1656,10 @@ package PythagoraDevice
         SI.AngularVelocity w_a[3];
         SI.AngularVelocity w_b[3];
         Real n_ab[3] "Normal vector of between two objects from flang.a";
-        
         /* ---------------------------------------------
-                    Spring and damper variables
-                    Reference: http://penguinitis.g1.xrea.com/study/note/discrete_element_method.pdf
-        --------------------------------------------- */  
+                                    Spring and damper variables
+                                    Reference: http://penguinitis.g1.xrea.com/study/note/discrete_element_method.pdf
+                        --------------------------------------------- */
         SI.TranslationalSpringConstant c_n(final min = 0) "Spring constant";
         SI.TranslationalSpringConstant c_t(final min = 0) "Spring constant";
         SI.TranslationalDampingConstant d_n(final min = 0) "Damping constant";
@@ -994,51 +1675,43 @@ package PythagoraDevice
         Real m_a;
         Real m_b;
         Real G_star;
-      
-      //Comfirm state
+        //Comfirm state
         Integer contactState;
         String shapeCombi;
-        
       equation
-      /* ---------------------------------------------
+/* ---------------------------------------------
       Notice: Formulas that need to be defined at the inheritance destination are commented out
       --------------------------------------------- */
-      
-      //nonlinear spring stiffness c_n and damping coefficient d_n for normal direction
-        1/E_star = (1-nue_a^2)/E_a+(1-nue_b^2)/E_b;
-      //  1/R_star = 1/(D_a/2)+1/(D_b/2);
-      //  1/m_star = 1/m_a + 1/m_b;
-        alpha = log(e)*sqrt(1/(log(e)^2+pi^2));
-        c_n = 4/3*E_star*sqrt(R_star*L_penetrate);
-        d_n = 2*sqrt((m_star * c_n)/(1+(pi/log(e))^2));
-        
-      //nonlinear spring stiffness c_t and damping coefficient d_t for tangent direction
-        c_t = 8*G_star*sqrt(R_star * L_penetrate);
-        1/G_star = 2 * (2 - nue_a) * (1 + nue_a) / E_a + 2 * (2 - nue_b) * (1 + nue_b) / E_b;
+//nonlinear spring stiffness c_n and damping coefficient d_n for normal direction
+        1 / E_star = (1 - nue_a ^ 2) / E_a + (1 - nue_b ^ 2) / E_b;
+//  1/R_star = 1/(D_a/2)+1/(D_b/2);
+//  1/m_star = 1/m_a + 1/m_b;
+        alpha = log(e) * sqrt(1 / (log(e) ^ 2 + pi ^ 2));
+        c_n = 4 / 3 * E_star * sqrt(R_star * L_penetrate);
+        d_n = 2 * sqrt(m_star * c_n / (1 + (pi / log(e)) ^ 2));
+//nonlinear spring stiffness c_t and damping coefficient d_t for tangent direction
+        c_t = 8 * G_star * sqrt(R_star * L_penetrate);
+        1 / G_star = 2 * (2 - nue_a) * (1 + nue_a) / E_a + 2 * (2 - nue_b) * (1 + nue_b) / E_b;
         d_t = d_n;
-      
-      //Relative geometric relationships and penetration depth
-      //  s_rel = s_b - s_a;
-      //  L_gap = length(s_rel);
-      //  L_threshold = D_a / 2 + D_b / 2;
-      //  n_ab = normalize(s_rel);
-      //  v_rel = der(s_rel);
+//Relative geometric relationships and penetration depth
+//  s_rel = s_b - s_a;
+//  L_gap = length(s_rel);
+//  L_threshold = D_a / 2 + D_b / 2;
+//  n_ab = normalize(s_rel);
+//  v_rel = der(s_rel);
         L_penetrate = max(L_threshold - L_gap, 0);
         s_penetrate = L_penetrate * n_ab;
         v_gap = der(L_gap);
-      
-      //normal force
+//normal force
         f_n = f_nc + f_nd;
         f_nc = -c_n * s_penetrate;
-        f_nd = smooth(0, noEvent(if L_penetrate <> 0 then (if v_gap < 0 and length(f_nd2) > length(f_nc) then f_nc elseif v_gap >= 0 and  length(f_nd2) > length(f_nc) then -f_nc else f_nd2 ) else zeros(3)));  
-        f_nd2 = -d_n*v_rel*n_ab*n_ab;
-      
-      //tangent force
+        f_nd = smooth(0, noEvent(if L_penetrate <> 0 then if v_gap < 0 and length(f_nd2) > length(f_nc) then f_nc elseif v_gap >= 0 and length(f_nd2) > length(f_nc) then -f_nc else f_nd2 else zeros(3)));
+        f_nd2 = -d_n * v_rel * n_ab * n_ab;
+//tangent force
         v_n = v_rel * n_ab * n_ab;
-        v_t = v_rel - v_n + cross(L_contact_a * w_a + L_contact_b * w_b, n_ab);
+//  v_t = v_rel - v_n + cross(L_contact_a * w_a + L_contact_b * w_b, n_ab);
         der(s_t) = v_t;
-      
-      //  f_t_friction = -mu * length(f_n) * normalize(v_t);
+//  f_t_friction = -mu * length(f_n) * normalize(v_t);
         f_t_penetrate = (-c_t * s_t) - d_t * v_t;
         if L_penetrate == 0 then
           f_t = zeros(3);
@@ -1052,15 +1725,12 @@ package PythagoraDevice
             contactState = 2;
           end if;
         end if;
-      
-      //contact force
-        f = f_n + f_t + f_vis;
-        
-      //contact torque
-      //  s_torque = center_a.geometry.L * n_ab;
-        torque = cross(s_torque, f_t);
-      
-      //port
+//contact force
+//  f = f_n + f_t + f_vis;
+//contact torque
+//  s_torque = center_a.geometry.L * n_ab;
+//  torque = cross(s_torque, f_t);
+//port
         center_a.position = s_a;
         center_b.position = s_b;
         center_a.f = -f;
@@ -1074,9 +1744,8 @@ package PythagoraDevice
         center_a.material.nue = nue_a;
         center_b.material.nue = nue_b;
         center_a.m = m_a;
-        center_b.m = m_b;  
-      
-      //dummy
+        center_b.m = m_b;
+//dummy
         shapeCombi = PythagoraDevice.Components.Functions.determineShapeCombination(center_a.geometry.shape, center_b.geometry.shape);
         annotation(
           Icon(graphics = {Polygon(origin = {-1, 9}, fillColor = {255, 255, 0}, fillPattern = FillPattern.Solid, points = {{-55, 87}, {-49, 43}, {-47, 21}, {-95, 15}, {-47, -29}, {-59, -87}, {-13, -37}, {-11, -79}, {5, -47}, {21, -89}, {39, -37}, {87, -65}, {51, -15}, {93, -1}, {53, 15}, {77, 27}, {61, 27}, {85, 79}, {23, 43}, {9, 89}, {-7, 45}, {-55, 87}})}),
@@ -1085,7 +1754,8 @@ package PythagoraDevice
     end Partials;
   end Interfaces;
 
-  model Enviroment //Test model
+  model Enviroment
+    //Test model
     parameter SI.Acceleration g[3] = {0, -Modelica.Constants.g_n, 0} "Constant gravity acceleration" annotation(
       Dialog(group = "Gravity"));
     parameter Real wind;
